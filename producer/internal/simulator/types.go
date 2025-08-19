@@ -4,6 +4,7 @@ import "time"
 
 // SwapEvent represents a single swap event with base fields
 type SwapEvent struct {
+	TxHash     string    `json:"tx_hash"`
 	TokenFrom  string    `json:"token_from"`
 	TokenTo    string    `json:"token_to"`
 	AmountFrom float64   `json:"amount_from"`
