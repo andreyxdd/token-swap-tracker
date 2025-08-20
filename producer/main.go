@@ -15,7 +15,7 @@ func main() {
 	swapEventsPerSecondStr := os.Getenv("SWAP_EVENTS_PER_SECOND")
 	swapEventsPerSecond, err := strconv.ParseFloat(swapEventsPerSecondStr, 64)
 	if err != nil {
-		log.Fatalf("Error converting string to float64: %v", err)
+		log.Fatalf("failed to convert string %s to float64: %v", swapEventsPerSecondStr, err)
 	}
 
 	var swapChannel = make(chan *simulator.SwapEvent, 1000)
@@ -30,7 +30,7 @@ func main() {
 
 	p, err := producer.New(swapChannel, cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize Kafka producer: %v", err)
+		log.Fatalf("failed to initialize Kafka producer: %v", err)
 	}
 	defer p.KafkaProducer.Close()
 

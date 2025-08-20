@@ -8,7 +8,5 @@ WORKDIR /app
 RUN CGO_ENABLED=1 go build -tags musl -o producer .
 
 FROM alpine:3.20
-ENV KAFKA_BROKERS=localhost:9092
-ENV KAFKA_TOPIC=swaps
 COPY --from=builder /app/producer /usr/bin/producer
 CMD ["/usr/bin/producer"]

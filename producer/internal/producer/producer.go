@@ -18,9 +18,9 @@ type Client[T any] struct {
 func New[T any](ch chan T, cfg Config) (*Client[T], error) {
 	config := kafka.ConfigMap{
 		"bootstrap.servers": cfg.Brokers,
-		"acks":              "all",  // Ensure that all replicas acknowledge
-		"compression.codec": "gzip", // Optional: compress messages to save bandwidth
-		"linger.ms":         5,      // Delay for batching to increase throughput
+		"acks":              "all",  // ensure that all replicas acknowledge
+		"compression.codec": "gzip", // compress messages to save bandwidth
+		"linger.ms":         5,      // delay for batching to increase throughput
 	}
 
 	producer, err := kafka.NewProducer(&config)
