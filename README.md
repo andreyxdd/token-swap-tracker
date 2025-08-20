@@ -1,33 +1,32 @@
 # Token Swap Tracker
 
-This project simulates tracking and aggregation of the swap token service.
+This project simulates the tracking and aggregation of the data from a swap token service.
 
-- `producer` is a Kafka producer service that emits swap events
-- `consumer` contains implementation of the two services:
-  - API to server aggregated data via REST
-  - Kafka consumer that reads the data from the topics and broadcasts it via WebSocket server
+- `producer` is a Kafka producer service that emits swap events.
+- `consumer` contains the implementation of two services:
+  - API to serve aggregated data via REST.
+  - Kafka consumer that reads data from topics and broadcasts it via a WebSocket server.
 
-Since Kafka consumer implementation is separate from the REST API service, it can be deployed in a separate k8s deployment and scaled horizontally depending on the producer's swap event rate or number of connected WebSocket clients.
+Since the Kafka consumer implementation is separate from the REST API service, it can be deployed in a separate Kubernetes deployment and scaled horizontally, depending on the producer's swap event rate or the number of connected WebSocket clients.
 
 ## Opened Questions
 
-### What transport mechanisms to use from a producer?
+### What transport mechanisms should be used by the producer?
 
-Kafka transport mechanism should be sufificent here to handle the 1000 events per minute emitted from the producer. Further perfromance optimization can be achived with protobufs.
+The Kafka transport mechanism should be sufficient here to handle the 1000 events per minute emitted by the producer. Further performance optimization can be achieved with Protobufs.
 
-### Where to store different types of data?
+### Where should different types of data be stored?
 
-In-memory storage soluations, such as Redis or Memcached, can be utilized to serve data via REST API. For historical data, time-series databases, such as InflusDB or TimescaleDB (a PostgreSQL extension), is the best choice. PostgresSQL or similar can be used to store service metadata and checkpoints.
+In-memory storage solutions, such as Redis or Memcached, can be utilized to serve data via the REST API. For historical data, time-series databases like InfluxDB or TimescaleDB (a PostgreSQL extension) are the best choices. PostgreSQL or similar databases can be used to store service metadata and checkpoints.
 
+### How can high availability and zero data loss be ensured?
 
-### How to ensure high availability and zero data loss?
+High availability can be achieved in the following ways:
+- The Kafka consumer can be scaled horizontally, depending on the load and number of connected WebSockets.
+- REST API services can also be scaled horizontally via Kubernetes, as they are stateless.
+- Redis can be scaled horizontally using techniques like Redis Cluster, sharding, or read replicas.
 
-High avaialbity can be achived in the following way:
-- Kafka consumer can be scaled horizontally depending on the load and number of connected WebSockets
-- REST API services also can be scaled horizontaly via k8s as it's stateless
-- Redis can be scaled horizaontally using techniques like Redis Cluster, sharding, or read replicas
-
-To ensure zero data loss, Kafka consumer groups with offset commits after processing can be utilized. Last processed offset can be stored in PostgreSQL as a checkpoint, so that restart can be done from this saved state.
+To ensure zero data loss, Kafka consumer groups with offset commits after processing can be utilized. The last processed offset can be stored in PostgreSQL as a checkpoint, so that a restart can be done from this saved state.
 
 
 ## Local Dev
