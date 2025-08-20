@@ -25,16 +25,16 @@ func NewRedisStatsRepo(cfg RedisConfig) *RedisStatsRepo {
 }
 
 func (r *RedisStatsRepo) GetStats(ctx context.Context, key string) (*models.Stats, error) {
-	volumeKey := key + ":volume"
-	volume, err := r.rdb.Get(ctx, volumeKey).Float64()
+	volumeKeyPrefix := key + ":volume"
+	volume, err := r.rdb.Get(ctx, volumeKeyPrefix).Float64()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get volume data from redis for key %s", volumeKey)
+		return nil, errors.Wrapf(err, "failed to get volume data from redis for key prefix %s", volumeKeyPrefix)
 	}
 
-	txCountKey := key + ":tx_count"
-	txCount, err := r.rdb.Get(ctx, txCountKey).Int()
+	txCountKeyPrefix := key + ":tx_count"
+	txCount, err := r.rdb.Get(ctx, txCountKeyPrefix).Int()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get tx count data from redis for key %s", volumeKey)
+		return nil, errors.Wrapf(err, "failed to get tx count data from redis for key prefix %s", txCountKeyPrefix)
 	}
 
 	return &models.Stats{
@@ -50,16 +50,19 @@ func (r *RedisStatsRepo) UpsertStats(ctx context.Context, key string, value floa
 	key24h := fmt.Sprintf("stats:%s:24h", key)
 
 	r.pipe.IncrByFloat(ctx, key5min+":volume", value)
+	r.pipe.ExpireAt(ctx, key5min+":volume", time.Unix(now+300, 0))
 	r.pipe.Incr(ctx, key5min+":tx_count")
-	r.pipe.ExpireAt(ctx, key5min, time.Unix(now+300, 0)) // Expire after 5 minutes
+	r.pipe.ExpireAt(ctx, key5min+":tx_count", time.Unix(now+300, 0))
 
 	r.pipe.IncrByFloat(ctx, key1h+":volume", value)
+	r.pipe.ExpireAt(ctx, key5min+":volume", time.Unix(now+3600, 0))
 	r.pipe.Incr(ctx, key1h+":tx_count")
-	r.pipe.ExpireAt(ctx, key1h, time.Unix(now+3600, 0)) // Expire after 1 hour
+	r.pipe.ExpireAt(ctx, key1h, time.Unix(now+3600, 0))
 
 	r.pipe.IncrByFloat(ctx, key24h+":volume", value)
+	r.pipe.ExpireAt(ctx, key24h+":volume", time.Unix(now+86400, 0))
 	r.pipe.Incr(ctx, key24h+":tx_count")
-	r.pipe.ExpireAt(ctx, key24h, time.Unix(now+86400, 0)) // Expire after 24 hours
+	r.pipe.ExpireAt(ctx, key24h+":tx_count", time.Unix(now+86400, 0))
 
 	_, err := r.pipe.Exec(ctx)
 	if err != nil {
