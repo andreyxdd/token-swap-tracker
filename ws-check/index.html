@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="connect-src 'self' ws://localhost:8082;"
+    />
+    <title>WebSocket Test</title>
+  </head>
+  <body>
+    <h1>WebSocket Test</h1>
+    <script>
+      const socket = new WebSocket("ws://localhost:8082/ws");
+
+      socket.onopen = () => {
+        console.log("Connected to WebSocket server");
+      };
+
+      socket.onmessage = (event) => {
+        console.log("Message from server:", event.data);
+      };
+
+      socket.onerror = (error) => {
+        console.log("WebSocket error:", error);
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket closed");
+      };
+    </script>
+  </body>
+</html>
