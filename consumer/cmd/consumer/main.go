@@ -31,7 +31,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 
-	redisCfg := services.RedsiConfig{Addr: redisAddr, Password: redisPw}
+	redisCfg := services.RedisConfig{Addr: redisAddr, Password: redisPw}
 	repo := services.NewRedisStatsRepo(redisCfg)
 	service := services.NewStatsService(repo)
 	c, err := consumer.New(service, cfg)

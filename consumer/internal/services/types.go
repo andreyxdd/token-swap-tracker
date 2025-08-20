@@ -1,6 +1,6 @@
 package services
 
-type RedsiConfig struct {
+type RedisConfig struct {
 	Addr     string
 	Password string
 }

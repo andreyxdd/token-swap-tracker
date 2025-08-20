@@ -12,7 +12,7 @@ func main() {
 	redisAddr := os.Getenv("REDIS_ADDR")
 	redisPw := os.Getenv("REDIS_PASSWORD")
 
-	redisCfg := services.RedsiConfig{Addr: redisAddr, Password: redisPw}
+	redisCfg := services.RedisConfig{Addr: redisAddr, Password: redisPw}
 	repo := services.NewRedisStatsRepo(redisCfg)
 	service := services.NewStatsService(repo)
 

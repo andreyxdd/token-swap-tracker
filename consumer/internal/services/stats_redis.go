@@ -15,7 +15,7 @@ type RedisStatsRepo struct {
 	pipe redis.Pipeliner
 }
 
-func NewRedisStatsRepo(cfg RedsiConfig) *RedisStatsRepo {
+func NewRedisStatsRepo(cfg RedisConfig) *RedisStatsRepo {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,
