@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -59,38 +60,74 @@ func (r *RedisStatsRepo) GetStats(ctx context.Context, key string) (*models.Stat
 // - O(1) writes: 6 Redis operations per swap
 // - Fixed memory
 // - Automatic cleanup: Redis TTL handles expiration
-func (r *RedisStatsRepo) UpsertStats(ctx context.Context, key string, value float64) error {
+func (r *RedisStatsRepo) UpsertStats(
+	ctx context.Context,
+	key string,
+	value float64,
+) (map[string]*models.Stats, error) {
+	data := make(map[string]*models.Stats)
 	now := time.Now()
 
 	// 5min buckets (60 seconds each)
 	bucket5min := now.Truncate(time.Minute).Unix()
-	key5min := fmt.Sprintf("stats:%s:5min:%d", key, bucket5min)
+	key5minPrefix := utils.BuildSemicolonKey(key, "5min")
+	key5min := fmt.Sprintf("stats:%s:%d", key5minPrefix, bucket5min)
 
 	// 1h buckets (5 minutes each)
 	bucket1h := now.Truncate(5 * time.Minute).Unix()
-	key1h := fmt.Sprintf("stats:%s:1h:%d", key, bucket1h)
+	key1hPrefix := utils.BuildSemicolonKey(key, "1h")
+	key1h := fmt.Sprintf("stats:%s:%d", key1hPrefix, bucket1h)
 
 	// 24h buckets (1 hour each)
 	bucket24h := now.Truncate(time.Hour).Unix()
-	key24h := fmt.Sprintf("stats:%s:24h:%d", key, bucket24h)
+	key24hPrefix := utils.BuildSemicolonKey(key, "24h")
+	key24h := fmt.Sprintf("stats:%s:%d", key24hPrefix, bucket24h)
 
-	r.pipe.IncrByFloat(ctx, key5min+":volume", value)
-	r.pipe.Incr(ctx, key5min+":tx_count")
+	vol5min, err := r.pipe.IncrByFloat(ctx, key5min+":volume", value).Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key5min+":volume")
+	}
 	r.pipe.Expire(ctx, key5min+":volume", 5*time.Minute)
+
+	count5min, err := r.pipe.Incr(ctx, key5min+":tx_count").Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key5min+":tx_count")
+	}
 	r.pipe.Expire(ctx, key5min+":tx_count", 5*time.Minute)
+	data[key5minPrefix] = &models.Stats{Volume: vol5min, TxCount: count5min}
 
-	r.pipe.IncrByFloat(ctx, key1h+":volume", value)
-	r.pipe.Incr(ctx, key1h+":tx_count")
+	vol1h, err := r.pipe.IncrByFloat(ctx, key1h+":volume", value).Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key1h+":volume")
+	}
 	r.pipe.Expire(ctx, key1h+":volume", 60*time.Minute)
+
+	count1h, err := r.pipe.Incr(ctx, key1h+":tx_count").Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key1h+":tx_count")
+	}
 	r.pipe.Expire(ctx, key1h+":tx_count", 60*time.Minute)
+	data[key1hPrefix] = &models.Stats{Volume: vol1h, TxCount: count1h}
 
-	r.pipe.IncrByFloat(ctx, key24h+":volume", value)
-	r.pipe.Incr(ctx, key24h+":tx_count")
+	vol24h, err := r.pipe.IncrByFloat(ctx, key24h+":volume", value).Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key24h+":volume")
+	}
 	r.pipe.Expire(ctx, key24h+":volume", 24*time.Hour)
-	r.pipe.Expire(ctx, key24h+":tx_count", 24*time.Hour)
 
-	_, err := r.pipe.Exec(ctx)
-	return err
+	count24h, err := r.pipe.Incr(ctx, key24h+":tx_count").Result()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to increment key %s", key24h+":tx_count")
+	}
+	r.pipe.Expire(ctx, key24h+":tx_count", 24*time.Hour)
+	data[key24hPrefix] = &models.Stats{Volume: vol24h, TxCount: count24h}
+
+	_, err = r.pipe.Exec(ctx)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to exec a pipeline for key %s and value %v", key, value)
+	}
+
+	return data, err
 }
 
 // Get the bucket keys based on the current time and provided original key

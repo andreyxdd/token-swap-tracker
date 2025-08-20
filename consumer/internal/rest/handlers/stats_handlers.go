@@ -57,7 +57,7 @@ func (h *StatsHandler) GetTokenStats(c *gin.Context) {
 	statsKey := fmt.Sprintf("stats:%s:%s", token, window)
 	stats, err := h.service.GetStats(ctx, statsKey)
 	if err != nil {
-		log.Fatal(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
+		log.Println(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}
@@ -98,7 +98,7 @@ func (h *StatsHandler) GetPairStats(c *gin.Context) {
 	statsKey := fmt.Sprintf("stats:%s:%s", pair, window)
 	stats, err := h.service.GetStats(ctx, statsKey)
 	if err != nil {
-		log.Fatal(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
+		log.Println(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		return
 	}

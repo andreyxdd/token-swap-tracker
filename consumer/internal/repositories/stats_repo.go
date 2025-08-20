@@ -7,5 +7,5 @@ import (
 
 type StatsRepo interface {
 	GetStats(ctx context.Context, key string) (*models.Stats, error)
-	UpsertStats(ctx context.Context, key string, value float64) error
+	UpsertStats(ctx context.Context, key string, value float64) (map[string]*models.Stats, error)
 }

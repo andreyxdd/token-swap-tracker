@@ -5,6 +5,7 @@ import (
 	"consumer/internal/repositories"
 	"consumer/internal/utils"
 	"context"
+	"encoding/json"
 
 	"github.com/pkg/errors"
 )
@@ -25,22 +26,41 @@ func (s *StatsService) GetStats(ctx context.Context, key string) (*models.Stats,
 	return s.repo.GetStats(ctx, key)
 }
 
-func (s *StatsService) ProcessSwapEvent(ctx context.Context, event models.SwapEvent) error {
-	err := s.repo.UpsertStats(ctx, event.TokenFrom, event.UsdValue)
+func (s *StatsService) ProcessSwapEvent(
+	ctx context.Context,
+	event models.SwapEvent,
+	broadcast chan []byte,
+) error {
+	data, err := s.repo.UpsertStats(ctx, event.TokenFrom, event.UsdValue)
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert stats for tokenFrom %s and usd value %v", event.TokenFrom, event.UsdValue)
 	}
+	statsTokenFrom, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrapf(err, "failed to marshal stats data for tokenFrom %s and usd value %v", event.TokenFrom, event.UsdValue)
+	}
+	broadcast <- statsTokenFrom
 
-	err = s.repo.UpsertStats(ctx, event.TokenTo, event.UsdValue)
+	data, err = s.repo.UpsertStats(ctx, event.TokenTo, event.UsdValue)
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert stats for tokenTo %s and usd value %v", event.TokenTo, event.UsdValue)
 	}
+	statsTokenTo, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrapf(err, "failed to marshal stats data for tokenTo %s and usd value %v", event.TokenTo, event.UsdValue)
+	}
+	broadcast <- statsTokenTo
 
-	tokenPair := utils.BuildTokenPairkey(event.TokenFrom, event.TokenTo)
-	err = s.repo.UpsertStats(ctx, tokenPair, event.UsdValue)
+	tokenPair := utils.BuildHyphenKey(event.TokenFrom, event.TokenTo)
+	data, err = s.repo.UpsertStats(ctx, tokenPair, event.UsdValue)
 	if err != nil {
 		return errors.Wrapf(err, "failed to upsert stats for token pair %s and usd value %v", tokenPair, event.UsdValue)
 	}
+	statsTokenPair, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrapf(err, "failed to marshal stats data for token pair %s and usd value %v", tokenPair, event.UsdValue)
+	}
+	broadcast <- statsTokenPair
 
 	return nil
 }
