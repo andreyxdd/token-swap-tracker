@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:alpine
+    restart: always
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "mysecretpassword"
+    ports:
+      - 6379:6379
+    volumes:
+      - ./data/redis_data:/data
+    networks:
+      - app-network
+
   kafka:
     image: apache/kafka-native
     ports:
@@ -25,7 +39,7 @@ services:
     depends_on:
       - kafka
     environment:
-      DYNAMIC_CONFIG_ENABLED: "true"
+      DYNAMIC_CONFIG_ENABLED: true
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
     networks:
@@ -36,15 +50,55 @@ services:
       context: .
       dockerfile: ./producer/Dockerfile
     container_name: producer-service
+    restart: unless-stopped
     depends_on:
       - kafka
     environment:
-      - KAFKA_BROKERS=kafka:9093
-      - KAFKA_TOPIC=swaps
-      - SWAP_EVENTS_PER_SECOND=0.1
+      KAFKA_BROKERS: kafka:9093
+      KAFKA_TOPIC: swaps
+      SWAP_EVENTS_PER_SECOND: 0.1
     networks:
       - app-network
+
+  consumer:
+    build:
+      context: .
+      dockerfile: ./consumer/cmd/consumer/Dockerfile
+    container_name: consumer
     restart: unless-stopped
+    depends_on:
+      - kafka
+      - producer
+      - redis
+    ports:
+      - 8082:8082
+    environment:
+      PORT: 8082
+      KAFKA_BROKERS: kafka:9093
+      KAFKA_TOPIC: swaps
+      KAFKA_CONSUMER_GROUP_ID: swap-events-consumer
+      REDIS_PASSWORD: mysecretpassword
+      REDIS_ADDR: redis:6379
+      DEBUG: false
+    networks:
+      - app-network
+
+  consumer-rest-api:
+    build:
+      context: .
+      dockerfile: ./consumer/cmd/api/Dockerfile
+    container_name: consumer-rest-api
+    restart: unless-stopped
+    ports:
+      - 8081:8081
+    depends_on:
+      - consumer
+    environment:
+      PORT: 8081
+      REDIS_PASSWORD: mysecretpassword
+      REDIS_ADDR: redis:6379
+    networks:
+      - app-network
 
 networks:
   app-network:
