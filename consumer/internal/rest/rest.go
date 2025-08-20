@@ -71,8 +71,8 @@ func (s *RestApi) Run() error {
 			"health":   "/api/health",
 			"api_base": "/api/v1",
 			"endpoints": map[string]string{
-				"GET /api/v1/stats/:period/tokens/:token": "Get single token stats in a specific period",
-				"GET /api/v1/stats/:period/pairs/:pair":   "Get swap pair stats in a specific period",
+				"GET /api/v1/stats/:window/tokens/:token": "Get single token stats in a specific period window",
+				"GET /api/v1/stats/:window/pairs/:pair":   "Get swap pair stats in a specific period window",
 			},
 		})
 	})

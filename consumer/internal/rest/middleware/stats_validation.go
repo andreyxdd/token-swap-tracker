@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-var validPeriods = map[string]bool{
+var validPeriodWindows = map[string]bool{
 	"5min": true,
 	"1h":   true,
 	"24h":  true,
@@ -19,9 +19,9 @@ var validTokens = map[string]bool{
 	"ETH":  true,
 }
 
-// Function to validate the period
+// Function to validate the period window
 func IsValidPeriod(period string) bool {
-	_, valid := validPeriods[period]
+	_, valid := validPeriodWindows[period]
 	return valid
 }
 

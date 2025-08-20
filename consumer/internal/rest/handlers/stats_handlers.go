@@ -20,30 +20,30 @@ func NewStatsHandler(s *services.StatsService) *StatsHandler {
 }
 
 func (h *StatsHandler) RegisterRoutes(r *gin.RouterGroup) {
-	r.GET("/stats/:period/tokens/:token", h.GetTokenStats)
-	r.GET("/stats/:period/pairs/:pair", h.GetPairStats)
+	r.GET("/stats/:window/tokens/:token", h.GetTokenStats)
+	r.GET("/stats/:window/pairs/:pair", h.GetPairStats)
 }
 
 type ErrorResponse struct {
 	Error string `json:"error" example:"error message"`
 }
 
-// @Summary Get single token stats in a specific period
-// @Description Available periods are "5min", "1h", "24h". Available tokens are "BTC", "USDT", "TON", "SOL", "ETH".
+// @Summary Get single token stats in a specific period window
+// @Description Available period winows are "5min", "1h", "24h". Available tokens are "BTC", "USDT", "TON", "SOL", "ETH".
 // @Tags Stats
 // @Accept json
 // @Produce json
 // @Success 200 {array} models.Stats "Token stats"
 // @Success 400 {array} ErrorResponse "Bad request"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /stats/{period}/tokens/{token} [get]
+// @Router /stats/{window}/tokens/{token} [get]
 func (h *StatsHandler) GetTokenStats(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	period := c.Param("period")
-	isValidPeriod := middleware.IsValidPeriod(period)
+	window := c.Param("window")
+	isValidPeriod := middleware.IsValidPeriod(window)
 	if !isValidPeriod {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid period provided"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid period window provided"})
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *StatsHandler) GetTokenStats(c *gin.Context) {
 		return
 	}
 
-	statsKey := fmt.Sprintf("stats:%s:%s", token, period)
+	statsKey := fmt.Sprintf("stats:%s:%s", token, window)
 	stats, err := h.service.GetStats(ctx, statsKey)
 	if err != nil {
 		log.Fatal(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
@@ -62,29 +62,29 @@ func (h *StatsHandler) GetTokenStats(c *gin.Context) {
 		return
 	}
 	if stats == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no stats for the provided token and period"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "no stats for the provided token and period window"})
 		return
 	}
 
 	c.JSON(http.StatusOK, stats)
 }
 
-// @Summary Get swap pair stats in a specific period
-// @Description Available periods are "5min", "1h", "24h". Available tokens are "BTC", "USDT", "TON", "SOL", "ETH".
+// @Summary Get swap pair stats in a specific period window
+// @Description Available period are "5min", "1h", "24h". Available tokens are "BTC", "USDT", "TON", "SOL", "ETH".
 // @Tags Stats
 // @Accept json
 // @Produce json
 // @Success 200 {array} models.Stats "Swap pair stats"
 // @Success 400 {array} ErrorResponse "Bad request"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /stats/{period}/pairs/{pair} [get]
+// @Router /stats/{window}/pairs/{pair} [get]
 func (h *StatsHandler) GetPairStats(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	period := c.Param("period")
-	isValidPeriod := middleware.IsValidPeriod(period)
+	window := c.Param("window")
+	isValidPeriod := middleware.IsValidPeriod(window)
 	if !isValidPeriod {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid period provided"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid period window provided"})
 		return
 	}
 
@@ -95,7 +95,7 @@ func (h *StatsHandler) GetPairStats(c *gin.Context) {
 		return
 	}
 
-	statsKey := fmt.Sprintf("stats:%s:%s", pair, period)
+	statsKey := fmt.Sprintf("stats:%s:%s", pair, window)
 	stats, err := h.service.GetStats(ctx, statsKey)
 	if err != nil {
 		log.Fatal(errors.Wrapf(err, "failed to get stats from the stats service for the key %s", statsKey).Error())
@@ -103,7 +103,7 @@ func (h *StatsHandler) GetPairStats(c *gin.Context) {
 		return
 	}
 	if stats == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no stats for the provided pair and period"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "no stats for the provided pair and period window"})
 		return
 	}
 
