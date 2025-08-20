@@ -19,7 +19,6 @@ func main() {
 	restApi := rest.New(port, service)
 	err := restApi.Run()
 	if err != nil {
-		log.Fatal(err)
-		return
+		log.Println(err)
 	}
 }

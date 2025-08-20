@@ -19,9 +19,16 @@ type Client struct {
 	statsService  *services.StatsService
 	cfg           Config
 	KafkaConsumer *kafka.Consumer
+	wsCh          chan []byte
+	sigCh         chan os.Signal
 }
 
-func New(statsService *services.StatsService, cfg Config) (*Client, error) {
+func New(
+	statsService *services.StatsService,
+	cfg Config,
+	wsCh chan []byte,
+	sigCh chan os.Signal,
+) (*Client, error) {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": cfg.Brokers,
 		"group.id":          cfg.GroupId,
@@ -35,14 +42,14 @@ func New(statsService *services.StatsService, cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to subscribe to a topic %s", cfg.Topic)
 	}
-	return &Client{statsService, cfg, consumer}, nil
+	return &Client{statsService, cfg, consumer, wsCh, sigCh}, nil
 }
 
 // Consume from Kafka and process stats
-func (c *Client) ProcessSwapEvents(sigCh chan os.Signal) {
+func (c *Client) ProcessSwapEvents() {
 	for {
 		select {
-		case <-sigCh:
+		case <-c.sigCh:
 			log.Println("Received shutdown signal, stopping consumer...")
 			return
 		default:
@@ -51,19 +58,19 @@ func (c *Client) ProcessSwapEvents(sigCh chan os.Signal) {
 				if kafkaErr, ok := err.(kafka.Error); ok && kafkaErr.Code() == kafka.ErrTimedOut {
 					continue
 				}
-				log.Fatal("failed to read message with kafka consumer: ", err)
+				log.Printf("failed to read message with kafka consumer: %v\n", err)
 				continue
 			}
 
 			var event models.SwapEvent
 			err = json.Unmarshal(msg.Value, &event)
 			if err != nil {
-				log.Fatal("failed to unmarshal message: ", err)
+				log.Printf("failed to unmarshal message: %v\n", err)
 			}
 
-			err = c.statsService.ProcessSwapEvent(context.Background(), event)
+			err = c.statsService.ProcessSwapEvent(context.Background(), event, c.wsCh)
 			if err != nil {
-				log.Fatalf("failed to process swap event with tx hash %s: %v", event.TxHash, err)
+				log.Printf("failed to process swap event with tx hash %s: %v\n", event.TxHash, err)
 			}
 
 			if c.cfg.Debug {

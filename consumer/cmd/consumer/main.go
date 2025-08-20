@@ -3,12 +3,16 @@ package main
 import (
 	"consumer/internal/consumer"
 	"consumer/internal/services"
+	"consumer/internal/ws"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 )
 
 func main() {
+	wsPort := os.Getenv("WS_PORT")
 	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
 	kafkaTopic := os.Getenv("KAFKA_TOPIC")
 	kafkaConsumerGroupID := os.Getenv("KAFKA_CONSUMER_GROUP_ID")
@@ -27,21 +31,36 @@ func main() {
 		Debug:   debug,
 	}
 
-	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 
 	redisCfg := services.RedisConfig{Addr: redisAddr, Password: redisPw}
 	repo := services.NewRedisStatsRepo(redisCfg)
 	service := services.NewStatsService(repo)
-	c, err := consumer.New(service, cfg)
+
+	var wsCh = make(chan []byte)
+	c, err := consumer.New(service, cfg, wsCh, sigCh)
 	if err != nil {
-		log.Fatalf("failed to initialize Kafka consumer: %v", err)
+		log.Printf("failed to initialize Kafka consumer: %v\n", err)
 	}
 	defer c.KafkaConsumer.Close()
 
-	// Start consuming events
-	go c.ProcessSwapEvents(sigCh)
+	ws := ws.New(wsCh)
+	http.HandleFunc("/ws", ws.Handler)
+	addr := fmt.Sprintf(":%s", wsPort)
+
+	go func() {
+		log.Printf("WebSocket server started on %s\n", addr)
+		err = http.ListenAndServe(addr, nil)
+		if err != nil {
+			log.Printf("Error starting WebSocket server: %v\n", err)
+		}
+		log.Println("WebSocket server stopped")
+	}()
+
+	// Start web-socket broadcasting and consuming events from kafka
+	go ws.HandleBroadcasting()
+	go c.ProcessSwapEvents()
 
 	<-sigCh
 	log.Println("Shutting down gracefully...")

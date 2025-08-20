@@ -10,4 +10,6 @@ RUN CGO_ENABLED=1 go build -tags musl -o consumer .
 FROM alpine:3.20
 RUN apk add -U --no-cache ca-certificates
 COPY --from=builder /app/cmd/consumer/consumer /usr/bin/consumer
+ENV WS_PORT=8082
+EXPOSE ${WS_PORT}
 CMD ["/usr/bin/consumer"]
